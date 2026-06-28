@@ -126,7 +126,7 @@ body {
 <div class="status" id="status">
     Passengers: 0 | Income: 0
 </div>
-
+   
 <script>
 
 let currentRoute = "Busstation";
@@ -217,7 +217,24 @@ function respond(type, id) {
         alert("❌ Skipped request");
     }
 }
+<button onclick="testRequest()" style="padding:15px; margin:10px; font-size:18px;">
+📢 Test Passenger Request
+</button>
 
+<script>
+function testRequest() {
+    fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec", {
+        method: "POST",
+        body: JSON.stringify({
+            type: "request",
+            from: "Saliña",
+            to: "Punda"
+        })
+    });
+
+    alert("✅ Test request sent!");
+}
+</script>
 /* ✅ AUTO LOAD EVERY 10s */
 setInterval(loadRequests, 10000);
 
