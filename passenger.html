@@ -1,8 +1,59 @@
 <!DOCTYPE html>
 <html>
-<body style="font-family:Arial; text-align:center;">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<h2>Send Transport Request</h2>
+<style>
+body {
+    font-family: Arial;
+    text-align: center;
+    background: #f0f0f0;
+    padding: 20px;
+}
+
+/* MAIN CARD */
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* BIG SELECTS */
+select {
+    width: 100%;
+    padding: 15px;
+    font-size: 18px;
+    margin: 10px 0;
+    border-radius: 8px;
+}
+
+/* BIG BUTTON */
+button {
+    width: 100%;
+    padding: 18px;
+    font-size: 20px;
+    background: #0a2a66;
+    color: white;
+    border: none;
+    border-radius: 10px;
+}
+
+/* RESPONSE BOX */
+#statusBox {
+    margin-top: 20px;
+    font-size: 20px;
+    font-weight: bold;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>🚏 Request a Bus</h2>
 
 <select id="from">
   <option>Saliña</option>
@@ -10,38 +61,68 @@
   <option>Otrabanda</option>
 </select>
 
-<br><br>
-
 <select id="to">
   <option>Punda</option>
   <option>Saliña</option>
   <option>Otrabanda</option>
 </select>
 
-<br><br>
+<button onclick="sendRequest()">Send Request</button>
 
-<button onclick="sendRequest()" style="padding:15px;">
-Send Request
-</button>
+<div id="statusBox"></div>
+
+</div>
 
 <script>
 
+let requestTime = null;
+
 function sendRequest() {
 
-const from = document.getElementById("from").value;
-const to = document.getElementById("to").value;
+    const from = document.getElementById("from").value;
+    const to = document.getElementById("to").value;
 
-fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec", {
-    method: "POST",
-    body: JSON.stringify({
-        type: "request",
-        from: from,
-        to: to
-    })
-});
+    requestTime = new Date().toISOString();
 
-alert("✅ Request sent!");
+    fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec", {
+        method: "POST",
+        body: JSON.stringify({
+            type: "request",
+            from: from,
+            to: to
+        })
+    });
+
+    document.getElementById("statusBox").innerText =
+        "⏳ Request sent... waiting for driver...";
 }
+
+
+/* CHECK DRIVER RESPONSE */
+async function checkResponse() {
+
+    if (!requestTime) return;
+
+    const res = await fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec");
+    const data = await res.json();
+
+    data.forEach(item => {
+
+        if (item.response === "wait") {
+            document.getElementById("statusBox").innerText =
+                "✅ Driver is coming your way!";
+        }
+
+        if (item.response === "pass") {
+            document.getElementById("statusBox").innerText =
+                "❌ No driver available right now";
+        }
+
+    });
+}
+
+/* AUTO CHECK */
+setInterval(checkResponse, 5000);
 
 </script>
 
