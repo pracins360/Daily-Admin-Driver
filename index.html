@@ -132,6 +132,7 @@ body {
 let currentRoute = "Busstation";
 let passengers = 0;
 let income = 0;
+    let lastRequests = [];
 
 /* ✅ ROUTE SELECT */
 function setRoute(route) {
@@ -177,6 +178,7 @@ async function loadRequests() {
         const list = document.getElementById("requestList");
 
         let html = "";
+lastRequests = data;
 
         if (data.length === 0) {
             list.innerHTML = "No active requests";
@@ -213,7 +215,19 @@ function timeAgo(time) {
 }
 
 /* ✅ DRIVER RESPONSE */
-function respond(type, id) {
+function respond(type, index) {
+
+    const req = lastRequests[index];
+
+  fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec", {
+        method: "POST",
+        body: JSON.stringify({
+            type: "response",
+            time: req.time,
+            response: type
+        })
+    });
+
     if(type === "wait"){
         alert("✅ You are going this way");
     } else {
@@ -239,5 +253,4 @@ function testRequest() {
 setInterval(loadRequests, 10000);
 loadRequests();
 setRoute("Busstation");
-
 </script>
