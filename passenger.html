@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family:Arial; text-align:center;">
+
+<h2>Send Transport Request</h2>
+
+<select id="from">
+  <option>Saliña</option>
+  <option>Punda</option>
+  <option>Otrabanda</option>
+</select>
+
+<br><br>
+
+<select id="to">
+  <option>Punda</option>
+  <option>Saliña</option>
+  <option>Otrabanda</option>
+</select>
+
+<br><br>
+
+<button onclick="sendRequest()" style="padding:15px;">
+Send Request
+</button>
+
+<script>
+
+function sendRequest() {
+
+const from = document.getElementById("from").value;
+const to = document.getElementById("to").value;
+
+fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec", {
+    method: "POST",
+    body: JSON.stringify({
+        type: "request",
+        from: from,
+        to: to
+    })
+});
+
+alert("✅ Request sent!");
+}
+
+</script>
+
+</body>
+</html>
