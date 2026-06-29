@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Request a Bus</title>
 
 <style>
 body {
@@ -17,6 +18,8 @@ body {
     padding: 20px;
     border-radius: 12px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    max-width: 400px;
+    margin: 0 auto;
 }
 
 /* BIG SELECTS */
@@ -26,6 +29,7 @@ select {
     font-size: 18px;
     margin: 10px 0;
     border-radius: 8px;
+    border: 1px solid #ddd;
 }
 
 /* BIG BUTTON */
@@ -37,6 +41,11 @@ button {
     color: white;
     border: none;
     border-radius: 10px;
+    font-weight: bold;
+}
+
+button:active {
+    background: #1a3a76;
 }
 
 /* RESPONSE BOX */
@@ -44,6 +53,7 @@ button {
     margin-top: 20px;
     font-size: 20px;
     font-weight: bold;
+    min-height: 30px;
 }
 </style>
 
@@ -76,55 +86,79 @@ button {
 <script>
 
 let requestTime = null;
+let myRequestId = null;
 
 function sendRequest() {
 
     const from = document.getElementById("from").value;
     const to = document.getElementById("to").value;
 
-    requestTime = new Date().toISOString();
+    if (from === to) {
+        document.getElementById("statusBox").innerText = "⚠️ Pick different locations!";
+        return;
+    }
+
+    myRequestId = new Date().toISOString();
+    requestTime = myRequestId;
 
     fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec", {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json"   ✅ VERY IMPORTANT
-    },
-    body: JSON.stringify({
-        type: "request",
-        from: from,
-        to: to
-    })
-});
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            type: "request",
+            from: from,
+            to: to
+        })
+    });
 
     document.getElementById("statusBox").innerText =
         "⏳ Request sent... waiting for driver...";
 }
-
 
 /* CHECK DRIVER RESPONSE */
 async function checkResponse() {
 
     if (!requestTime) return;
 
-    const res = await fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec");
-    const data = await res.json();
+    try {
+        const res = await fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec");
+        const data = await res.json();
 
-    data.forEach(item => {
+        let found = false;
 
-        if (item.response === "wait") {
-            document.getElementById("statusBox").innerText =
-                "✅ Driver is coming your way!";
+        data.forEach(item => {
+            // Check if this is our request by matching time
+            if (item.time === requestTime) {
+                found = true;
+                if (item.response === "wait") {
+                    document.getElementById("statusBox").innerHTML = 
+                        "✅ Driver is coming your way! 🚍<br><small style='color:#2ecc71;'>Your driver will arrive shortly</small>";
+                } else if (item.response === "pass") {
+                    document.getElementById("statusBox").innerHTML = 
+                        "❌ No driver available right now<br><small style='color:#e74c3c;'>Try again in a few minutes</small>";
+                }
+            }
+        });
+
+        // If request is more than 5 minutes old and no response, show timeout
+        const now = new Date();
+        const past = new Date(requestTime);
+        const diffMinutes = (now - past) / 1000 / 60;
+        
+        if (diffMinutes > 5 && !found) {
+            document.getElementById("statusBox").innerHTML = 
+                "⏰ Request timed out<br><small>No driver responded. Please try again.</small>";
+            requestTime = null;
         }
 
-        if (item.response === "pass") {
-            document.getElementById("statusBox").innerText =
-                "❌ No driver available right now";
-        }
-
-    });
+    } catch(e) {
+        console.error("Error checking response:", e);
+    }
 }
 
-/* AUTO CHECK */
+/* AUTO CHECK every 5 seconds */
 setInterval(checkResponse, 5000);
 
 </script>
