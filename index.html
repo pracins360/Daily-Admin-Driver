@@ -40,6 +40,7 @@ body {
     border: none;
     border-radius: 8px;
     font-weight: bold;
+    cursor: pointer;
 }
 
 .wait-btn { background: #2ecc71; color: white; }
@@ -57,6 +58,7 @@ body {
     border-radius: 20px;
     border: none;
     background: #ddd;
+    cursor: pointer;
 }
 
 .active-route {
@@ -79,6 +81,7 @@ body {
     border: none;
     background: #ffd700;
     font-weight: bold;
+    cursor: pointer;
 }
 
 /* STATUS */
@@ -172,7 +175,7 @@ function tapFare(fare) {
     });
 }
 
-/* ✅ LOAD REQUESTS */
+/* ✅ LOAD REQUESTS - ONLY SHOW ACTIVE (NO RESPONSE YET) */
 async function loadRequests() {
     try {
         const res = await fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec");
@@ -180,24 +183,27 @@ async function loadRequests() {
 
         const list = document.getElementById("requestList");
 
-        let html = "";
+        // Filter: Only show requests with NO response yet
+        const activeRequests = data.filter(req => !req.response || req.response === "");
 
-        if (data.length === 0) {
-            list.innerHTML = "No active requests";
+        if (activeRequests.length === 0) {
+            list.innerHTML = "✅ No active requests";
             return;
         }
 
-        lastRequests = data;
+        // Store only active requests
+        lastRequests = activeRequests;
 
-        data.slice(0,5).forEach((req, index) => {
+        let html = "";
+        activeRequests.slice(0, 10).forEach((req, index) => {
             html += `
                 <div class="request-card">
                     📍 ${req.from} → ${req.to}<br>
                     ⏱ ${timeAgo(req.time)}
 
                     <div class="request-buttons">
-                        <button class="wait-btn" onclick="respond('wait', ${index})">WAIT</button>
-                        <button class="pass-btn" onclick="respond('pass', ${index})">PASS</button>
+                        <button class="wait-btn" onclick="respond('wait', ${index})">✅ WAIT</button>
+                        <button class="pass-btn" onclick="respond('pass', ${index})">❌ PASS</button>
                     </div>
                 </div>
             `;
@@ -206,6 +212,7 @@ async function loadRequests() {
         list.innerHTML = html;
 
     } catch(e) {
+        console.error("Error loading requests:", e);
         document.getElementById("requestList").innerText = "Error loading requests";
     }
 }
@@ -226,6 +233,11 @@ function respond(type, index) {
 
     const req = lastRequests[index];
 
+    if (!req) {
+        alert("⚠️ Request not found");
+        return;
+    }
+
     fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec", {
         method: "POST",
         headers: {
@@ -236,22 +248,57 @@ function respond(type, index) {
             time: req.time,
             response: type
         })
+    })
+    .then(() => {
+        if(type === "wait"){
+            alert("✅ You are going this way");
+        } else {
+            alert("❌ Skipped request");
+        }
+        // Reload requests immediately
+        loadRequests();
+    })
+    .catch(error => {
+        alert("⚠️ Error sending response");
+        console.error(error);
     });
-
-    if(type === "wait"){
-        alert("✅ You are going this way");
-    } else {
-        alert("❌ Skipped request");
-    }
-
-    // Reload requests after responding
-    setTimeout(loadRequests, 1000);
 }
 
-/* ✅ AUTO LOAD */
-setInterval(loadRequests, 10000);
+/* ✅ TEST REQUEST - FOR DEBUGGING */
+function testRequest() {
+    fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            type: "request",
+            from: "Saliña",
+            to: "Punda"
+        })
+    })
+    .then(() => {
+        alert("✅ Test request sent!");
+        loadRequests();
+    })
+    .catch(error => {
+        alert("⚠️ Error sending test request");
+        console.error(error);
+    });
+}
+
+/* ✅ AUTO LOAD - EVERY 5 SECONDS */
+setInterval(loadRequests, 5000);
 loadRequests();
 setRoute("Busstation");
+
+// Add test button to page
+const testBtn = document.createElement('button');
+testBtn.innerHTML = '🧪 Test Request';
+testBtn.style.cssText = 'position:fixed; bottom:10px; right:10px; padding:10px 20px; background:#ffd700; border:none; border-radius:8px; font-weight:bold; cursor:pointer; z-index:999;';
+testBtn.onclick = testRequest;
+document.body.appendChild(testBtn);
+
 </script>
 </body>
 </html>
