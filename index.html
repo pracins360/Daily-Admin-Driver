@@ -87,17 +87,33 @@ body {
     font-weight: bold;
 }
 
-#debug {
+#messageBox {
     background: #fff3cd;
     padding: 10px;
     margin: 10px;
     border-radius: 8px;
-    font-family: monospace;
-    font-size: 12px;
-    max-height: 150px;
-    overflow: auto;
+    border: 2px solid #ffc107;
+    font-family: Arial;
+    font-size: 14px;
     display: none;
-    border: 1px solid #ffc107;
+}
+
+#messageBox.error {
+    background: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+#messageBox.success {
+    background: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+#messageBox.info {
+    background: #d1ecf1;
+    border-color: #17a2b8;
+    color: #0c5460;
 }
 </style>
 
@@ -107,6 +123,9 @@ body {
 <div class="header">
     🚍 Driver Panel
 </div>
+
+<!-- MESSAGE BOX -->
+<div id="messageBox"></div>
 
 <!-- 🔥 PASSENGER REQUESTS -->
 <div class="requests">
@@ -135,12 +154,9 @@ body {
     Passengers: 0 | Income: 0
 </div>
 
-<!-- Debug Console -->
-<div id="debug"></div>
-
 <script>
 
-// 🔥 ONLY PASTE YOUR URL HERE - ONE PLACE!
+// 🔥 YOUR URL HERE - ONLY ONE PLACE
 const API_URL = "https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec";
 
 let currentRoute = "Busstation";
@@ -148,12 +164,18 @@ let passengers = 0;
 let income = 0;
 let lastRequests = [];
 
-function logDebug(message) {
-    const debug = document.getElementById('debug');
-    debug.style.display = 'block';
-    debug.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '\n';
-    debug.scrollTop = debug.scrollHeight;
-    console.log(message);
+function showMessage(text, type = "info") {
+    const box = document.getElementById("messageBox");
+    box.style.display = "block";
+    box.className = type;
+    box.innerHTML = text;
+    
+    // Auto-hide after 10 seconds for success/info
+    if (type !== "error") {
+        setTimeout(() => {
+            box.style.display = "none";
+        }, 10000);
+    }
 }
 
 /* ✅ ROUTE SELECT */
@@ -168,7 +190,7 @@ function setRoute(route) {
     } else {
         dest.classList.add("active-route");
     }
-    logDebug('Route changed to: ' + route);
+    showMessage("Route changed to: " + route, "info");
 }
 
 /* ✅ TAP PASSENGER */
@@ -178,7 +200,7 @@ function tapFare(fare) {
     document.getElementById("status").innerText =
         `Passengers: ${passengers} | Income: ${income.toFixed(2)}`;
 
-    logDebug('Tapping fare: ' + fare);
+    showMessage("Tapping fare: " + fare, "info");
     
     fetch(API_URL, {
         method: "POST",
@@ -191,10 +213,10 @@ function tapFare(fare) {
     })
     .then(res => res.json())
     .then(data => {
-        logDebug('Tap response: ' + JSON.stringify(data));
+        showMessage("✅ Tap recorded: " + fare, "success");
     })
     .catch(error => {
-        logDebug('❌ Tap error: ' + error.message);
+        showMessage("❌ Tap failed: " + error.message, "error");
     });
 }
 
@@ -208,7 +230,6 @@ async function loadRequests() {
         }
         
         const data = await res.json();
-        logDebug('Loaded ' + (data ? data.length : 0) + ' requests');
 
         const list = document.getElementById("requestList");
 
@@ -242,7 +263,7 @@ async function loadRequests() {
         list.innerHTML = html;
 
     } catch(e) {
-        logDebug('❌ Load error: ' + e.message);
+        showMessage("❌ Error loading: " + e.message, "error");
         document.getElementById("requestList").innerHTML = 
             '❌ Error loading: ' + e.message;
     }
@@ -262,11 +283,11 @@ function timeAgo(timestamp) {
 function respond(type, index) {
     const req = lastRequests[index];
     if (!req) {
-        alert("⚠️ Request not found");
+        showMessage("⚠️ Request not found", "error");
         return;
     }
 
-    logDebug('Responding: ' + req.from + '→' + req.to + ' = ' + type);
+    showMessage("Responding to: " + req.from + " → " + req.to, "info");
 
     fetch(API_URL, {
         method: "POST",
@@ -279,19 +300,19 @@ function respond(type, index) {
     })
     .then(res => res.json())
     .then(data => {
-        logDebug('Response saved: ' + JSON.stringify(data));
+        showMessage("✅ Response sent: " + (type === "wait" ? "WAIT" : "PASS"), "success");
         alert(type === "wait" ? "✅ You are going this way" : "❌ Skipped request");
         loadRequests();
     })
     .catch(error => {
-        logDebug('❌ Response error: ' + error.message);
+        showMessage("❌ Response failed: " + error.message, "error");
         alert("⚠️ Error: " + error.message);
     });
 }
 
 /* ✅ TEST REQUEST */
 function testRequest() {
-    logDebug('Sending test request...');
+    showMessage("Sending test request...", "info");
     
     fetch(API_URL, {
         method: "POST",
@@ -307,19 +328,18 @@ function testRequest() {
         return res.json();
     })
     .then(data => {
-        logDebug('✅ Test sent: ' + JSON.stringify(data));
+        showMessage("✅ Test request sent successfully!", "success");
         alert("✅ Test request sent!");
         loadRequests();
     })
     .catch(error => {
-        logDebug('❌ Test error: ' + error.message);
-        alert("⚠️ Error: " + error.message + "\n\nCheck:\n1. Script deployed as web app\n2. URL is correct");
+        showMessage("❌ Test failed: " + error.message + ". Check script deployment.", "error");
+        alert("⚠️ Error: " + error.message + "\n\nCheck:\n1. Script is deployed as web app\n2. URL is correct\n3. Sheet 'requests' exists");
     });
 }
 
 /* ✅ INIT */
-logDebug('🚍 Driver started');
-logDebug('URL: ' + API_URL);
+showMessage("🚍 Driver panel started. Checking requests...", "info");
 
 setInterval(loadRequests, 5000);
 loadRequests();
