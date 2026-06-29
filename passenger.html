@@ -51,17 +51,26 @@ button {
     background: #f8f8f8;
 }
 
-#debug {
+#messageBox {
     background: #fff3cd;
     padding: 10px;
     margin-top: 10px;
     border-radius: 8px;
-    font-family: monospace;
-    font-size: 12px;
-    max-height: 100px;
-    overflow: auto;
-    text-align: left;
+    border: 2px solid #ffc107;
     display: none;
+    font-size: 14px;
+}
+
+#messageBox.error {
+    background: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+#messageBox.success {
+    background: #d4edda;
+    border-color: #28a745;
+    color: #155724;
 }
 </style>
 
@@ -88,23 +97,28 @@ button {
 <button onclick="sendRequest()">📢 Send Request</button>
 
 <div id="statusBox">Ready to request 🚍</div>
-<div id="debug"></div>
+<div id="messageBox"></div>
 
 </div>
 
 <script>
 
-// 🔥 ONLY PASTE YOUR URL HERE - ONE PLACE!
+// 🔥 YOUR URL HERE - ONLY ONE PLACE
 const API_URL = "https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec";
 
 let requestTime = null;
 
-function logDebug(msg) {
-    const debug = document.getElementById('debug');
-    debug.style.display = 'block';
-    debug.innerHTML += new Date().toLocaleTimeString() + ': ' + msg + '\n';
-    debug.scrollTop = debug.scrollHeight;
-    console.log(msg);
+function showMessage(text, type = "info") {
+    const box = document.getElementById("messageBox");
+    box.style.display = "block";
+    box.className = type;
+    box.innerHTML = text;
+    
+    if (type !== "error") {
+        setTimeout(() => {
+            box.style.display = "none";
+        }, 8000);
+    }
 }
 
 function sendRequest() {
@@ -112,6 +126,7 @@ function sendRequest() {
     const to = document.getElementById("to").value;
 
     if (from === to) {
+        showMessage("⚠️ Pick different locations!", "error");
         document.getElementById("statusBox").innerHTML = "⚠️ Pick different locations!";
         return;
     }
@@ -119,8 +134,7 @@ function sendRequest() {
     requestTime = new Date().toISOString();
     const statusBox = document.getElementById("statusBox");
     statusBox.innerHTML = "⏳ Sending request...";
-
-    logDebug('Sending: ' + from + ' → ' + to);
+    showMessage("Sending request: " + from + " → " + to, "info");
 
     fetch(API_URL, {
         method: "POST",
@@ -136,13 +150,13 @@ function sendRequest() {
         return res.json();
     })
     .then(data => {
-        logDebug('✅ Sent: ' + JSON.stringify(data));
-        statusBox.innerHTML = "⏳ Waiting for driver...";
+        showMessage("✅ Request sent successfully!", "success");
+        statusBox.innerHTML = "⏳ Waiting for driver response...";
         checkResponse();
     })
     .catch(error => {
-        logDebug('❌ Error: ' + error.message);
-        statusBox.innerHTML = "❌ Error: " + error.message;
+        showMessage("❌ Error: " + error.message + ". Check if script is deployed.", "error");
+        statusBox.innerHTML = "❌ Error sending request";
     });
 }
 
@@ -161,11 +175,11 @@ async function checkResponse() {
         if (ourRequest) {
             if (ourRequest.response === "wait") {
                 statusBox.innerHTML = "✅ Driver is coming! 🚍";
-                logDebug('Driver WAIT');
+                showMessage("✅ Driver is on the way!", "success");
                 requestTime = null;
             } else if (ourRequest.response === "pass") {
                 statusBox.innerHTML = "❌ No driver available";
-                logDebug('Driver PASS');
+                showMessage("❌ No driver available right now", "error");
                 requestTime = null;
             }
         }
@@ -176,17 +190,18 @@ async function checkResponse() {
         
         if (diffMinutes > 5 && requestTime) {
             statusBox.innerHTML = "⏰ Request timed out";
+            showMessage("⏰ Request timed out - no driver responded", "error");
             requestTime = null;
         }
 
     } catch(e) {
-        logDebug('Check error: ' + e.message);
+        showMessage("Error checking response: " + e.message, "error");
     }
 }
 
+// Check every 3 seconds
 setInterval(checkResponse, 3000);
-logDebug('🚏 Passenger started');
-logDebug('URL: ' + API_URL);
+showMessage("🚏 Ready to request a bus", "info");
 
 </script>
 
