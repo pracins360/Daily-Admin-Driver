@@ -42,6 +42,7 @@ button {
     border: none;
     border-radius: 10px;
     font-weight: bold;
+    cursor: pointer;
 }
 
 button:active {
@@ -53,7 +54,10 @@ button:active {
     margin-top: 20px;
     font-size: 20px;
     font-weight: bold;
-    min-height: 30px;
+    min-height: 60px;
+    padding: 10px;
+    border-radius: 8px;
+    background: #f8f8f8;
 }
 </style>
 
@@ -77,16 +81,16 @@ button:active {
   <option>Otrabanda</option>
 </select>
 
-<button onclick="sendRequest()">Send Request</button>
+<button onclick="sendRequest()">📢 Send Request</button>
 
-<div id="statusBox"></div>
+<div id="statusBox">Ready to request 🚍</div>
 
 </div>
 
 <script>
 
 let requestTime = null;
-let myRequestId = null;
+let responseChecked = false;
 
 function sendRequest() {
 
@@ -94,12 +98,16 @@ function sendRequest() {
     const to = document.getElementById("to").value;
 
     if (from === to) {
-        document.getElementById("statusBox").innerText = "⚠️ Pick different locations!";
+        document.getElementById("statusBox").innerHTML = "⚠️ Pick different locations!";
         return;
     }
 
-    myRequestId = new Date().toISOString();
-    requestTime = myRequestId;
+    // Generate unique ID using timestamp + random
+    requestTime = new Date().toISOString();
+    responseChecked = false;
+
+    const statusBox = document.getElementById("statusBox");
+    statusBox.innerHTML = "⏳ Request sent... waiting for driver...";
 
     fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec", {
         method: "POST",
@@ -109,47 +117,51 @@ function sendRequest() {
         body: JSON.stringify({
             type: "request",
             from: from,
-            to: to
+            to: to,
+            time: requestTime  // Send the time with the request
         })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log("Request sent:", data);
+    })
+    .catch(error => {
+        statusBox.innerHTML = "❌ Error sending request";
+        console.error(error);
     });
-
-    document.getElementById("statusBox").innerText =
-        "⏳ Request sent... waiting for driver...";
 }
 
 /* CHECK DRIVER RESPONSE */
 async function checkResponse() {
 
-    if (!requestTime) return;
+    if (!requestTime || responseChecked) return;
 
     try {
         const res = await fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec");
         const data = await res.json();
 
-        let found = false;
+        const statusBox = document.getElementById("statusBox");
 
-        data.forEach(item => {
-            // Check if this is our request by matching time
-            if (item.time === requestTime) {
-                found = true;
-                if (item.response === "wait") {
-                    document.getElementById("statusBox").innerHTML = 
-                        "✅ Driver is coming your way! 🚍<br><small style='color:#2ecc71;'>Your driver will arrive shortly</small>";
-                } else if (item.response === "pass") {
-                    document.getElementById("statusBox").innerHTML = 
-                        "❌ No driver available right now<br><small style='color:#e74c3c;'>Try again in a few minutes</small>";
-                }
+        // Look for our specific request by time
+        const ourRequest = data.find(item => item.time === requestTime);
+
+        if (ourRequest) {
+            if (ourRequest.response === "wait") {
+                statusBox.innerHTML = "✅ Driver is coming your way! 🚍<br><small style='color:#2ecc71;'>Your driver will arrive shortly</small>";
+                responseChecked = true;
+            } else if (ourRequest.response === "pass") {
+                statusBox.innerHTML = "❌ No driver available right now<br><small style='color:#e74c3c;'>Try again in a few minutes</small>";
+                responseChecked = true;
             }
-        });
+        }
 
-        // If request is more than 5 minutes old and no response, show timeout
+        // Check if request is too old (> 5 minutes)
         const now = new Date();
         const past = new Date(requestTime);
         const diffMinutes = (now - past) / 1000 / 60;
         
-        if (diffMinutes > 5 && !found) {
-            document.getElementById("statusBox").innerHTML = 
-                "⏰ Request timed out<br><small>No driver responded. Please try again.</small>";
+        if (diffMinutes > 5 && !responseChecked) {
+            statusBox.innerHTML = "⏰ Request timed out<br><small>No driver responded. Please try again.</small>";
             requestTime = null;
         }
 
@@ -158,8 +170,8 @@ async function checkResponse() {
     }
 }
 
-/* AUTO CHECK every 5 seconds */
-setInterval(checkResponse, 5000);
+/* AUTO CHECK every 3 seconds (faster) */
+setInterval(checkResponse, 3000);
 
 </script>
 
