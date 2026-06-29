@@ -12,7 +12,6 @@ body {
     padding: 20px;
 }
 
-/* MAIN CARD */
 .card {
     background: white;
     padding: 20px;
@@ -22,7 +21,6 @@ body {
     margin: 0 auto;
 }
 
-/* BIG SELECTS */
 select {
     width: 100%;
     padding: 15px;
@@ -32,7 +30,6 @@ select {
     border: 1px solid #ddd;
 }
 
-/* BIG BUTTON */
 button {
     width: 100%;
     padding: 18px;
@@ -45,19 +42,26 @@ button {
     cursor: pointer;
 }
 
-button:active {
-    background: #1a3a76;
-}
-
-/* RESPONSE BOX */
 #statusBox {
     margin-top: 20px;
-    font-size: 20px;
-    font-weight: bold;
+    font-size: 18px;
     min-height: 60px;
     padding: 10px;
     border-radius: 8px;
     background: #f8f8f8;
+}
+
+#debug {
+    background: #fff3cd;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 12px;
+    max-height: 100px;
+    overflow: auto;
+    text-align: left;
+    display: none;
 }
 </style>
 
@@ -84,16 +88,26 @@ button:active {
 <button onclick="sendRequest()">📢 Send Request</button>
 
 <div id="statusBox">Ready to request 🚍</div>
+<div id="debug"></div>
 
 </div>
 
 <script>
 
+// REPLACE WITH YOUR URL
+const API_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
+
 let requestTime = null;
-let responseChecked = false;
+
+function logDebug(msg) {
+    const debug = document.getElementById('debug');
+    debug.style.display = 'block';
+    debug.innerHTML += new Date().toLocaleTimeString() + ': ' + msg + '\n';
+    debug.scrollTop = debug.scrollHeight;
+    console.log(msg);
+}
 
 function sendRequest() {
-
     const from = document.getElementById("from").value;
     const to = document.getElementById("to").value;
 
@@ -102,76 +116,82 @@ function sendRequest() {
         return;
     }
 
-    // Generate unique ID using timestamp + random
     requestTime = new Date().toISOString();
-    responseChecked = false;
-
     const statusBox = document.getElementById("statusBox");
-    statusBox.innerHTML = "⏳ Request sent... waiting for driver...";
+    statusBox.innerHTML = "⏳ Sending request...";
 
-    fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec", {
+    logDebug('Sending request: ' + from + ' → ' + to);
+
+    fetch(API_URL, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             type: "request",
             from: from,
-            to: to,
-            time: requestTime  // Send the time with the request
+            to: to
         })
     })
-    .then(response => response.json())
+    .then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+    })
     .then(data => {
-        console.log("Request sent:", data);
+        logDebug('Request sent: ' + JSON.stringify(data));
+        statusBox.innerHTML = "⏳ Request sent... waiting for driver...";
+        // Start checking for response
+        checkResponse();
     })
     .catch(error => {
-        statusBox.innerHTML = "❌ Error sending request";
-        console.error(error);
+        logDebug('❌ Error: ' + error.message);
+        statusBox.innerHTML = "❌ Error sending request<br><small>" + error.message + "</small>";
     });
 }
 
-/* CHECK DRIVER RESPONSE */
 async function checkResponse() {
-
-    if (!requestTime || responseChecked) return;
+    if (!requestTime) return;
 
     try {
-        const res = await fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec");
+        const res = await fetch(API_URL);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        
         const data = await res.json();
-
         const statusBox = document.getElementById("statusBox");
 
-        // Look for our specific request by time
+        // Find our request
         const ourRequest = data.find(item => item.time === requestTime);
 
         if (ourRequest) {
             if (ourRequest.response === "wait") {
-                statusBox.innerHTML = "✅ Driver is coming your way! 🚍<br><small style='color:#2ecc71;'>Your driver will arrive shortly</small>";
-                responseChecked = true;
+                statusBox.innerHTML = "✅ Driver is coming! 🚍";
+                logDebug('Driver said WAIT');
+                requestTime = null;
             } else if (ourRequest.response === "pass") {
-                statusBox.innerHTML = "❌ No driver available right now<br><small style='color:#e74c3c;'>Try again in a few minutes</small>";
-                responseChecked = true;
+                statusBox.innerHTML = "❌ No driver available";
+                logDebug('Driver said PASS');
+                requestTime = null;
             }
         }
 
-        // Check if request is too old (> 5 minutes)
+        // Check timeout (5 minutes)
         const now = new Date();
         const past = new Date(requestTime);
         const diffMinutes = (now - past) / 1000 / 60;
         
-        if (diffMinutes > 5 && !responseChecked) {
-            statusBox.innerHTML = "⏰ Request timed out<br><small>No driver responded. Please try again.</small>";
+        if (diffMinutes > 5) {
+            statusBox.innerHTML = "⏰ Request timed out";
             requestTime = null;
         }
 
     } catch(e) {
-        console.error("Error checking response:", e);
+        logDebug('Check error: ' + e.message);
     }
 }
 
-/* AUTO CHECK every 3 seconds (faster) */
+// Check every 3 seconds
 setInterval(checkResponse, 3000);
+
+logDebug('🚏 Passenger panel started');
+logDebug('API URL: ' + API_URL);
 
 </script>
 
