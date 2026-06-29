@@ -161,6 +161,7 @@ function tapFare(fare) {
 
     fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec", {
         method: "POST",
+       headers: {4    "Content-Type": "application/json"5  },
         body: JSON.stringify({
             type: "tap",
             tariff: fare,
