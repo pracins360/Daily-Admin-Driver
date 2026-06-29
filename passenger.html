@@ -94,7 +94,7 @@ button {
 
 <script>
 
-// REPLACE WITH YOUR URL
+// 🔥 ONLY PASTE YOUR URL HERE - ONE PLACE!
 const API_URL = "https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec";
 
 let requestTime = null;
@@ -120,7 +120,7 @@ function sendRequest() {
     const statusBox = document.getElementById("statusBox");
     statusBox.innerHTML = "⏳ Sending request...";
 
-    logDebug('Sending request: ' + from + ' → ' + to);
+    logDebug('Sending: ' + from + ' → ' + to);
 
     fetch(API_URL, {
         method: "POST",
@@ -136,14 +136,13 @@ function sendRequest() {
         return res.json();
     })
     .then(data => {
-        logDebug('Request sent: ' + JSON.stringify(data));
-        statusBox.innerHTML = "⏳ Request sent... waiting for driver...";
-        // Start checking for response
+        logDebug('✅ Sent: ' + JSON.stringify(data));
+        statusBox.innerHTML = "⏳ Waiting for driver...";
         checkResponse();
     })
     .catch(error => {
         logDebug('❌ Error: ' + error.message);
-        statusBox.innerHTML = "❌ Error sending request<br><small>" + error.message + "</small>";
+        statusBox.innerHTML = "❌ Error: " + error.message;
     });
 }
 
@@ -157,27 +156,25 @@ async function checkResponse() {
         const data = await res.json();
         const statusBox = document.getElementById("statusBox");
 
-        // Find our request
         const ourRequest = data.find(item => item.time === requestTime);
 
         if (ourRequest) {
             if (ourRequest.response === "wait") {
                 statusBox.innerHTML = "✅ Driver is coming! 🚍";
-                logDebug('Driver said WAIT');
+                logDebug('Driver WAIT');
                 requestTime = null;
             } else if (ourRequest.response === "pass") {
                 statusBox.innerHTML = "❌ No driver available";
-                logDebug('Driver said PASS');
+                logDebug('Driver PASS');
                 requestTime = null;
             }
         }
 
-        // Check timeout (5 minutes)
         const now = new Date();
         const past = new Date(requestTime);
         const diffMinutes = (now - past) / 1000 / 60;
         
-        if (diffMinutes > 5) {
+        if (diffMinutes > 5 && requestTime) {
             statusBox.innerHTML = "⏰ Request timed out";
             requestTime = null;
         }
@@ -187,11 +184,9 @@ async function checkResponse() {
     }
 }
 
-// Check every 3 seconds
 setInterval(checkResponse, 3000);
-
-logDebug('🚏 Passenger panel started');
-logDebug('API URL: ' + API_URL);
+logDebug('🚏 Passenger started');
+logDebug('URL: ' + API_URL);
 
 </script>
 
