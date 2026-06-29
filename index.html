@@ -94,9 +94,10 @@ body {
     border-radius: 8px;
     font-family: monospace;
     font-size: 12px;
-    max-height: 100px;
+    max-height: 150px;
     overflow: auto;
     display: none;
+    border: 1px solid #ffc107;
 }
 </style>
 
@@ -139,7 +140,7 @@ body {
 
 <script>
 
-// REPLACE THIS WITH YOUR DEPLOYED URL
+// 🔥 ONLY PASTE YOUR URL HERE - ONE PLACE!
 const API_URL = "https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec";
 
 let currentRoute = "Busstation";
@@ -200,15 +201,14 @@ function tapFare(fare) {
 /* ✅ LOAD REQUESTS */
 async function loadRequests() {
     try {
-        logDebug('Loading requests...');
         const res = await fetch(API_URL);
         
         if (!res.ok) {
-            throw new Error('HTTP ' + res.status + ': ' + res.statusText);
+            throw new Error('HTTP ' + res.status);
         }
         
         const data = await res.json();
-        logDebug('Received ' + (data ? data.length : 0) + ' requests');
+        logDebug('Loaded ' + (data ? data.length : 0) + ' requests');
 
         const list = document.getElementById("requestList");
 
@@ -221,7 +221,7 @@ async function loadRequests() {
         const activeRequests = data.filter(req => !req.response || req.response === "");
         
         if (activeRequests.length === 0) {
-            list.innerHTML = "✅ No pending requests (all responded)";
+            list.innerHTML = "✅ No pending requests";
             return;
         }
 
@@ -244,7 +244,7 @@ async function loadRequests() {
     } catch(e) {
         logDebug('❌ Load error: ' + e.message);
         document.getElementById("requestList").innerHTML = 
-            '❌ Error loading: ' + e.message + '<br><small>Check console and deploy URL</small>';
+            '❌ Error loading: ' + e.message;
     }
 }
 
@@ -266,7 +266,7 @@ function respond(type, index) {
         return;
     }
 
-    logDebug('Responding to request: ' + req.from + '→' + req.to + ' with ' + type);
+    logDebug('Responding: ' + req.from + '→' + req.to + ' = ' + type);
 
     fetch(API_URL, {
         method: "POST",
@@ -280,16 +280,12 @@ function respond(type, index) {
     .then(res => res.json())
     .then(data => {
         logDebug('Response saved: ' + JSON.stringify(data));
-        if(type === "wait"){
-            alert("✅ You are going this way");
-        } else {
-            alert("❌ Skipped request");
-        }
+        alert(type === "wait" ? "✅ You are going this way" : "❌ Skipped request");
         loadRequests();
     })
     .catch(error => {
         logDebug('❌ Response error: ' + error.message);
-        alert("⚠️ Error sending response: " + error.message);
+        alert("⚠️ Error: " + error.message);
     });
 }
 
@@ -311,19 +307,19 @@ function testRequest() {
         return res.json();
     })
     .then(data => {
-        logDebug('Test request sent: ' + JSON.stringify(data));
+        logDebug('✅ Test sent: ' + JSON.stringify(data));
         alert("✅ Test request sent!");
         loadRequests();
     })
     .catch(error => {
-        logDebug('❌ Test request error: ' + error.message);
-        alert("⚠️ Error sending test request: " + error.message + "\n\nCheck:\n1. Script deployed as web app\n2. URL is correct\n3. Sheet 'requests' exists");
+        logDebug('❌ Test error: ' + error.message);
+        alert("⚠️ Error: " + error.message + "\n\nCheck:\n1. Script deployed as web app\n2. URL is correct");
     });
 }
 
 /* ✅ INIT */
-logDebug('🚍 Driver panel started');
-logDebug('API URL: ' + API_URL);
+logDebug('🚍 Driver started');
+logDebug('URL: ' + API_URL);
 
 setInterval(loadRequests, 5000);
 loadRequests();
