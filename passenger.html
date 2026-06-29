@@ -85,13 +85,16 @@ function sendRequest() {
     requestTime = new Date().toISOString();
 
     fetch("https://script.google.com/macros/s/AKfycbxaO9s7bbrY-riIXoJQMcVFSVDAumoCBch-X3pcLOHcEJNxMQDDbuVoTziHThYcd64X/exec", {
-        method: "POST",
-        body: JSON.stringify({
-            type: "request",
-            from: from,
-            to: to
-        })
-    });
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"   ✅ VERY IMPORTANT
+    },
+    body: JSON.stringify({
+        type: "request",
+        from: from,
+        to: to
+    })
+});
 
     document.getElementById("statusBox").innerText =
         "⏳ Request sent... waiting for driver...";
